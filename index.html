@@ -2,7 +2,7 @@
 <html lang="ar">
 <head>
 <meta charset="UTF-8">
-<title>اختبار الإشعارات</title>
+<title>اختبار إشعارات Firebase</title>
 
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-messaging-compat.js"></script>
@@ -11,24 +11,24 @@
 body{
 font-family:Arial;
 text-align:center;
-padding:40px;
 background:#111;
 color:#fff;
+padding:40px;
 }
 button{
 padding:15px 30px;
 font-size:18px;
 border:none;
-border-radius:10px;
-cursor:pointer;
+border-radius:12px;
 background:#00c853;
 color:white;
+cursor:pointer;
 }
 #log{
-margin-top:30px;
+margin-top:25px;
 background:#000;
 padding:15px;
-border-radius:10px;
+border-radius:12px;
 text-align:left;
 white-space:pre-line;
 }
@@ -36,65 +36,60 @@ white-space:pre-line;
 </head>
 <body>
 
-<h1>🔔 اختبار Firebase Notifications</h1>
-
-<button onclick="startTest()">تشغيل الاختبار</button>
+<h2>🔔 اختبار Firebase Notifications</h2>
+<button onclick="start()">تشغيل الاختبار</button>
 
 <div id="log">Logs:\n</div>
 
 <script>
-function log(msg){
-document.getElementById("log").innerHTML += msg + "\n";
+function log(t){
+document.getElementById("log").innerHTML+=t+"\n";
 }
 
-/* Firebase config */
+/* Firebase Config */
 const firebaseConfig = {
 apiKey: "AIzaSyDPcyxpHRuLx9T2CO4LJ-n9jaqAynUjvqw",
-    authDomain: "xix5-a119a.firebaseapp.com",
-    projectId: "xix5-a119a",
-    messagingSenderId: "332265425367",
-    appId: "1:332265425367:web:0a95e71d8bd0058503a392"
-  };
-
+authDomain: "xix5-a119a.firebaseapp.com",
+projectId: "xix5-a119a",
+messagingSenderId: "332265425367",
+appId: "1:332265425367:web:0a95e71d8bd0058503a392"
 };
 
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-async function startTest(){
+async function start(){
 
 log("بدء الفحص...");
 
-/* فحص المتصفح */
+/* دعم الإشعارات */
 if(!("Notification" in window)){
 log("❌ المتصفح لا يدعم الإشعارات");
 return;
 }
 
-log("✔ المتصفح يدعم الإشعارات");
-
-/* طلب إذن */
+/* طلب الإذن */
 const permission = await Notification.requestPermission();
-log("Permission: " + permission);
+log("Permission: "+permission);
 
-if(permission !== "granted"){
-log("❌ لم يتم منح الإذن");
+if(permission!=="granted"){
+log("❌ تم رفض الإذن");
 return;
 }
 
 /* تسجيل SW */
 try{
-const reg = await navigator.serviceWorker.register("firebase-messaging-sw.js");
-log("✔ Service Worker registered");
+await navigator.serviceWorker.register("firebase-messaging-sw.js");
+log("✔ Service Worker OK");
 }catch(e){
-log("❌ SW error: " + e);
+log("❌ SW Error: "+e);
 return;
 }
 
-/* جلب توكن */
+/* جلب التوكن */
 try{
 const token = await messaging.getToken({
-vapidKey:"PUT_VAPID_KEY",
+vapidKey:"BEIkmsbcatAy4Kq8_ehZE19KzKQx2pHaYvIKmgTEq1oFSmePLEG7faBAsibGl1mFCNDbFv9-znm2x4DzpDISS8o",
 serviceWorkerRegistration: await navigator.serviceWorker.ready
 });
 
@@ -109,13 +104,11 @@ log("❌ Token Error:");
 log(err);
 }
 
-/* اختبار إشعار مباشر */
-new Notification("نجح الاختبار 🎉",{
-body:"الإشعارات تعمل بنجاح"
-});
-
+/* إشعار تجريبي */
+new Notification("نجح الاختبار 🎉",{body:"الإشعارات تعمل"});
 }
 
+/* استقبال إشعار أثناء فتح الصفحة */
 messaging.onMessage(payload=>{
 log("📩 إشعار وارد:");
 log(JSON.stringify(payload));
