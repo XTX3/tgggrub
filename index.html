@@ -2,30 +2,47 @@
 <html lang="ar">
 <head>
 <meta charset="UTF-8">
-<title>اختبار إشعارات Firebase</title>
+<title>نظام الطلبات</title>
 
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-messaging-compat.js"></script>
 
 <style>
 body{
-font-family:Arial;
-text-align:center;
 background:#111;
 color:#fff;
+font-family:Arial;
+text-align:center;
 padding:40px;
 }
-button{
-padding:15px 30px;
-font-size:18px;
+input{
+padding:12px;
+margin:8px;
+border-radius:10px;
 border:none;
-border-radius:12px;
+width:260px;
+}
+button{
+padding:12px 30px;
+margin:6px;
+border:none;
+border-radius:10px;
 background:#00c853;
-color:white;
+color:#fff;
 cursor:pointer;
+font-size:16px;
+}
+#adminPanel{
+display:none;
+margin-top:25px;
+padding:20px;
+background:#000;
+border-radius:15px;
 }
 #log{
-margin-top:25px;
+margin-top:20px;
 background:#000;
 padding:15px;
 border-radius:12px;
@@ -36,8 +53,31 @@ white-space:pre-line;
 </head>
 <body>
 
-<h2>🔔 اختبار Firebase Notifications</h2>
-<button onclick="start()">تشغيل الاختبار</button>
+<h2>تسجيل الدخول</h2>
+
+<input id="email" placeholder="البريد">
+<br>
+<input id="pass" type="password" placeholder="كلمة المرور">
+<br>
+
+<button onclick="login()">دخول</button>
+<button onclick="signup()">إنشاء حساب</button>
+
+<hr>
+
+<div id="orderBox" style="display:none">
+
+<h2>إرسال طلب</h2>
+<input id="order" placeholder="اسم الطلب">
+<br>
+<button onclick="sendOrder()">إرسال</button>
+
+</div>
+
+<div id="adminPanel">
+<h3>👑 لوحة المسؤول</h3>
+<div id="adminInfo"></div>
+</div>
 
 <div id="log">Logs:\n</div>
 
@@ -46,72 +86,96 @@ function log(t){
 document.getElementById("log").innerHTML+=t+"\n";
 }
 
-/* Firebase Config */
-const firebaseConfig = {
-apiKey: "AIzaSyDPcyxpHRuLx9T2CO4LJ-n9jaqAynUjvqw",
-authDomain: "xix5-a119a.firebaseapp.com",
-projectId: "xix5-a119a",
-messagingSenderId: "332265425367",
-appId: "1:332265425367:web:0a95e71d8bd0058503a392"
+/* بيانات مشروعك */
+const firebaseConfig={
+apiKey:"AIzaSyDPcyxpHRuLx9T2CO4LJ-n9jaqAynUjvqw",
+authDomain:"xix5-a119a.firebaseapp.com",
+projectId:"xix5-a119a",
+messagingSenderId:"332265425367",
+appId:"1:332265425367:web:0a95e71d8bd0058503a392"
 };
 
 firebase.initializeApp(firebaseConfig);
-const messaging = firebase.messaging();
 
-async function start(){
+const auth=firebase.auth();
+const db=firebase.firestore();
+const messaging=firebase.messaging();
 
-log("بدء الفحص...");
+const ADMIN_EMAIL="uusu.06@gmail.com";
 
-/* دعم الإشعارات */
-if(!("Notification" in window)){
-log("❌ المتصفح لا يدعم الإشعارات");
-return;
-}
+/* تسجيل Service Worker */
+navigator.serviceWorker.register("firebase-messaging-sw.js");
 
-/* طلب الإذن */
-const permission = await Notification.requestPermission();
-log("Permission: "+permission);
-
-if(permission!=="granted"){
-log("❌ تم رفض الإذن");
-return;
-}
-
-/* تسجيل SW */
+/* تسجيل دخول */
+async function login(){
 try{
-await navigator.serviceWorker.register("firebase-messaging-sw.js");
-log("✔ Service Worker OK");
-}catch(e){
-log("❌ SW Error: "+e);
+await auth.signInWithEmailAndPassword(email.value,pass.value);
+log("تم تسجيل الدخول");
+}catch(e){log(e.message)}
+}
+
+/* إنشاء حساب */
+async function signup(){
+try{
+await auth.createUserWithEmailAndPassword(email.value,pass.value);
+log("تم إنشاء حساب");
+}catch(e){log(e.message)}
+}
+
+/* إرسال طلب */
+async function sendOrder(){
+await db.collection("orders").add({
+name:order.value,
+user:auth.currentUser.email,
+time:new Date().toLocaleString()
+});
+log("تم إرسال الطلب");
+}
+
+/* مراقبة المستخدم */
+auth.onAuthStateChanged(async user=>{
+
+if(!user){
+orderBox.style.display="none";
+adminPanel.style.display="none";
 return;
 }
 
-/* جلب التوكن */
-try{
-const token = await messaging.getToken({
+orderBox.style.display="block";
+
+log("مستخدم: "+user.email);
+
+/* إذا كان المسؤول */
+if(user.email===ADMIN_EMAIL){
+
+adminPanel.style.display="block";
+adminInfo.innerHTML="مرحباً أيها المسؤول";
+
+await Notification.requestPermission();
+
+const reg=await navigator.serviceWorker.ready;
+
+const token=await messaging.getToken({
 vapidKey:"BEIkmsbcatAy4Kq8_ehZE19KzKQx2pHaYvIKmgTEq1oFSmePLEG7faBAsibGl1mFCNDbFv9-znm2x4DzpDISS8o",
-serviceWorkerRegistration: await navigator.serviceWorker.ready
+serviceWorkerRegistration:reg
 });
 
-if(token){
-log("✅ TOKEN:");
-log(token);
+await db.collection("admins").doc(user.uid).set({
+email:user.email,
+token:token
+});
+
+log("تم تسجيل جهاز المسؤول للإشعارات");
+
 }else{
-log("❌ لم يتم الحصول على توكن");
-}
-}catch(err){
-log("❌ Token Error:");
-log(err);
+adminPanel.style.display="none";
 }
 
-/* إشعار تجريبي */
-new Notification("نجح الاختبار 🎉",{body:"الإشعارات تعمل"});
-}
+});
 
 /* استقبال إشعار أثناء فتح الصفحة */
 messaging.onMessage(payload=>{
-log("📩 إشعار وارد:");
-log(JSON.stringify(payload));
+log("إشعار: "+payload.notification.title);
 });
 </script>
 
