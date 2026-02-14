@@ -11,67 +11,60 @@
 
 <style>
 body{
-background:#111;
-color:#fff;
-font-family:Arial;
-text-align:center;
-padding:40px;
+  background:#111;
+  color:#fff;
+  font-family:Arial;
+  text-align:center;
+  padding:40px;
 }
 input{
-padding:12px;
-margin:8px;
-border-radius:10px;
-border:none;
-width:260px;
+  padding:12px;
+  margin:8px;
+  border-radius:10px;
+  border:none;
+  width:260px;
 }
 button{
-padding:12px 30px;
-margin:6px;
-border:none;
-border-radius:10px;
-background:#00c853;
-color:#fff;
-cursor:pointer;
-font-size:16px;
+  padding:12px 30px;
+  margin:6px;
+  border:none;
+  border-radius:10px;
+  background:#00c853;
+  color:#fff;
+  cursor:pointer;
+  font-size:16px;
 }
 #adminPanel{
-display:none;
-margin-top:25px;
-padding:20px;
-background:#000;
-border-radius:15px;
+  display:none;
+  margin-top:25px;
+  padding:20px;
+  background:#000;
+  border-radius:15px;
 }
 #log{
-margin-top:20px;
-background:#000;
-padding:15px;
-border-radius:12px;
-text-align:left;
-white-space:pre-line;
+  margin-top:20px;
+  background:#000;
+  padding:15px;
+  border-radius:12px;
+  text-align:left;
+  white-space:pre-line;
 }
 </style>
 </head>
 <body>
 
 <h2>تسجيل الدخول</h2>
-
-<input id="email" placeholder="البريد">
-<br>
-<input id="pass" type="password" placeholder="كلمة المرور">
-<br>
-
-<button onclick="login()">دخول</button>
-<button onclick="signup()">إنشاء حساب</button>
+<input id="email" placeholder="البريد"><br>
+<input id="pass" type="password" placeholder="كلمة المرور"><br>
+<button id="loginBtn">دخول</button>
+<button id="signupBtn">إنشاء حساب</button>
 
 <hr>
 
 <div id="orderBox" style="display:none">
-
 <h2>إرسال طلب</h2>
-<input id="order" placeholder="اسم الطلب">
-<br>
-<button onclick="sendOrder()">إرسال</button>
-
+<input id="order" placeholder="اسم الطلب"><br>
+<button id="sendBtn">إرسال</button>
 </div>
 
 <div id="adminPanel">
@@ -83,18 +76,17 @@ white-space:pre-line;
 
 <script>
 function log(t){
-document.getElementById("log").innerHTML+=t+"\n";
+  document.getElementById("log").innerHTML+=t+"\n";
 }
 
-/* بيانات مشروعك */
+/* بيانات مشروع Firebase */
 const firebaseConfig={
-apiKey:"AIzaSyDPcyxpHRuLx9T2CO4LJ-n9jaqAynUjvqw",
-authDomain:"xix5-a119a.firebaseapp.com",
-projectId:"xix5-a119a",
-messagingSenderId:"332265425367",
-appId:"1:332265425367:web:0a95e71d8bd0058503a392"
+  apiKey:"AIzaSyDPcyxpHRuLx9T2CO4LJ-n9jaqAynUjvqw",
+  authDomain:"xix5-a119a.firebaseapp.com",
+  projectId:"xix5-a119a",
+  messagingSenderId:"332265425367",
+  appId:"1:332265425367:web:0a95e71d8bd0058503a392"
 };
-
 firebase.initializeApp(firebaseConfig);
 
 const auth=firebase.auth();
@@ -106,82 +98,86 @@ const ADMIN_EMAIL="uusu.06@gmail.com";
 /* تسجيل Service Worker */
 navigator.serviceWorker.register("firebase-messaging-sw.js");
 
-/* تسجيل دخول */
-async function login(){
-try{
-await auth.signInWithEmailAndPassword(email.value,pass.value);
-log("تم تسجيل الدخول");
-}catch(e){log(e.message)}
-}
+/* تسجيل الدخول */
+document.getElementById("loginBtn").addEventListener("click", async ()=>{
+  try{
+    const userCredential = await auth.signInWithEmailAndPassword(
+      document.getElementById("email").value,
+      document.getElementById("pass").value
+    );
+    log("تم تسجيل الدخول: "+userCredential.user.email);
+  } catch(e){
+    log("خطأ تسجيل الدخول: "+e.message);
+  }
+});
 
 /* إنشاء حساب */
-async function signup(){
-try{
-await auth.createUserWithEmailAndPassword(email.value,pass.value);
-log("تم إنشاء حساب");
-}catch(e){log(e.message)}
-}
+document.getElementById("signupBtn").addEventListener("click", async ()=>{
+  try{
+    const userCredential = await auth.createUserWithEmailAndPassword(
+      document.getElementById("email").value,
+      document.getElementById("pass").value
+    );
+    log("تم إنشاء الحساب: "+userCredential.user.email);
+  } catch(e){
+    log("خطأ إنشاء الحساب: "+e.message);
+  }
+});
 
 /* إرسال طلب */
-async function sendOrder(){
-await db.collection("orders").add({
-name:order.value,
-user:auth.currentUser.email,
-time:new Date().toLocaleString()
+document.getElementById("sendBtn").addEventListener("click", async ()=>{
+  const user = auth.currentUser;
+  if(!user){
+    alert("يجب تسجيل الدخول أولاً!");
+    return;
+  }
+  await db.collection("orders").add({
+    name: document.getElementById("order").value,
+    user: user.email,
+    time: new Date().toLocaleString()
+  });
+  log("تم إرسال الطلب: "+document.getElementById("order").value);
 });
-log("تم إرسال الطلب");
-}
 
-/* مراقبة المستخدم */
+/* مراقبة حالة المستخدم */
 auth.onAuthStateChanged(async user=>{
+  if(!user){
+    orderBox.style.display="none";
+    adminPanel.style.display="none";
+    return;
+  }
 
-if(!user){
-orderBox.style.display="none";
-adminPanel.style.display="none";
-return;
-}
+  orderBox.style.display="block";
+  log("مستخدم: "+user.email);
 
-orderBox.style.display="block";
+  /* إذا كان المسؤول */
+  if(user.email===ADMIN_EMAIL){
+    adminPanel.style.display="block";
+    adminInfo.innerHTML="مرحباً أيها المسؤول";
 
-log("مستخدم: "+user.email);
+    /* طلب إذن الإشعارات */
+    await Notification.requestPermission();
+    const reg = await navigator.serviceWorker.ready;
 
-/* إذا كان المسؤول */
-if(user.email === "uusu.06@gmail.com"){
-    // هذا هو المسؤول
-    console.log("تم التعرف على المسؤول");
-}
+    const token = await messaging.getToken({
+      vapidKey:"BEIkmsbcatAy4Kq8_ehZE19KzKQx2pHaYvIKmgTEq1oFSmePLEG7faBAsibGl1mFCNDbFv9-znm2x4DzpDISS8o",
+      serviceWorkerRegistration: reg
+    });
 
-
-adminPanel.style.display="block";
-adminInfo.innerHTML="مرحباً أيها المسؤول";
-
-await Notification.requestPermission();
-
-const reg=await navigator.serviceWorker.ready;
-
-const token=await messaging.getToken({
-vapidKey:"BEIkmsbcatAy4Kq8_ehZE19KzKQx2pHaYvIKmgTEq1oFSmePLEG7faBAsibGl1mFCNDbFv9-znm2x4DzpDISS8o",
-serviceWorkerRegistration:reg
+    await db.collection("admins").doc(user.uid).set({
+      email: user.email,
+      token: token
+    });
+    log("تم تسجيل جهاز المسؤول للإشعارات");
+  } else {
+    adminPanel.style.display="none";
+  }
 });
 
-await db.collection("admins").doc(user.uid).set({
-email:user.email,
-token:token
-});
-
-log("تم تسجيل جهاز المسؤول للإشعارات");
-
-}else{
-adminPanel.style.display="none";
-}
-
-});
-
-/* استقبال إشعار أثناء فتح الصفحة */
+/* استقبال الإشعارات أثناء فتح الصفحة */
 messaging.onMessage(payload=>{
-log("إشعار: "+payload.notification.title);
+  log("إشعار: "+payload.notification.title);
 });
 </script>
-
 </body>
 </html>
