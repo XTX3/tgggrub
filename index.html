@@ -2,7 +2,7 @@
 <html lang="ar">
 <head>
 <meta charset="UTF-8">
-<title>نظام الطلبات</title>
+<title>نظام الطلبات + إشعارات Firebase</title>
 
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
@@ -65,6 +65,7 @@ button{
 <h2>إرسال طلب</h2>
 <input id="order" placeholder="اسم الطلب"><br>
 <button id="sendBtn">إرسال</button>
+<button id="testNotifBtn">اختبار إشعار</button>
 </div>
 
 <div id="adminPanel">
@@ -79,7 +80,7 @@ function log(t){
   document.getElementById("log").innerHTML+=t+"\n";
 }
 
-/* بيانات مشروع Firebase */
+/* Firebase Config */
 const firebaseConfig={
   apiKey:"AIzaSyDPcyxpHRuLx9T2CO4LJ-n9jaqAynUjvqw",
   authDomain:"xix5-a119a.firebaseapp.com",
@@ -95,7 +96,7 @@ const messaging=firebase.messaging();
 
 const ADMIN_EMAIL="uusu.06@gmail.com";
 
-/* تسجيل Service Worker */
+/* تسجيل SW */
 navigator.serviceWorker.register("firebase-messaging-sw.js");
 
 /* تسجيل الدخول */
@@ -108,6 +109,7 @@ document.getElementById("loginBtn").addEventListener("click", async ()=>{
     log("تم تسجيل الدخول: "+userCredential.user.email);
   } catch(e){
     log("خطأ تسجيل الدخول: "+e.message);
+    alert("خطأ تسجيل الدخول: "+e.message);
   }
 });
 
@@ -119,8 +121,10 @@ document.getElementById("signupBtn").addEventListener("click", async ()=>{
       document.getElementById("pass").value
     );
     log("تم إنشاء الحساب: "+userCredential.user.email);
+    alert("تم إنشاء الحساب بنجاح!");
   } catch(e){
     log("خطأ إنشاء الحساب: "+e.message);
+    alert("خطأ إنشاء الحساب: "+e.message);
   }
 });
 
@@ -139,6 +143,19 @@ document.getElementById("sendBtn").addEventListener("click", async ()=>{
   log("تم إرسال الطلب: "+document.getElementById("order").value);
 });
 
+/* زر اختبار الإشعار للمسؤول */
+document.getElementById("testNotifBtn").addEventListener("click", async ()=>{
+  const user = auth.currentUser;
+  if(!user) return alert("يجب تسجيل الدخول!");
+  const adminDoc = await db.collection("admins").doc(user.uid).get();
+  const token = adminDoc.data().token;
+  if(!token) return alert("لم يتم تسجيل توكن المسؤول بعد");
+
+  /* إشعار تجريبي مباشر بدون Server Key */
+  new Notification("إشعار تجريبي", {body:"إذا ظهر هذا → الإشعارات تعمل ✅"});
+  log("تم إرسال إشعار تجريبي مباشر");
+});
+
 /* مراقبة حالة المستخدم */
 auth.onAuthStateChanged(async user=>{
   if(!user){
@@ -150,12 +167,10 @@ auth.onAuthStateChanged(async user=>{
   orderBox.style.display="block";
   log("مستخدم: "+user.email);
 
-  /* إذا كان المسؤول */
   if(user.email===ADMIN_EMAIL){
     adminPanel.style.display="block";
     adminInfo.innerHTML="مرحباً أيها المسؤول";
 
-    /* طلب إذن الإشعارات */
     await Notification.requestPermission();
     const reg = await navigator.serviceWorker.ready;
 
@@ -168,7 +183,8 @@ auth.onAuthStateChanged(async user=>{
       email: user.email,
       token: token
     });
-    log("تم تسجيل جهاز المسؤول للإشعارات");
+
+    log("تم تسجيل جهاز المسؤول للإشعارات: "+token);
   } else {
     adminPanel.style.display="none";
   }
@@ -179,5 +195,6 @@ messaging.onMessage(payload=>{
   log("إشعار: "+payload.notification.title);
 });
 </script>
+
 </body>
 </html>
