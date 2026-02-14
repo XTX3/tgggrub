@@ -17,4 +17,3 @@ messaging.onBackgroundMessage(payload=>{
     {body: payload.notification.body}
   );
 });
-
